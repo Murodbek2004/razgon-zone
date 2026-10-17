@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Razgon Zone — High-Frequency Trading Terminal</title>
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Google Fonts: Orbitron & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Navigation Bar -->
+    <header class="top-nav">
+      <div class="brand">
+        <span class="brand-bolt">⚡</span>
+        <span class="brand-title">RAZGON<span class="neon-text">ZONE</span></span>
+      </div>
+      <div class="net-status">
+        <span class="pulse-dot"></span>
+        <span class="net-name">TRC-20 TRADING</span>
+      </div>
+    </header>
+
+    <!-- Trader Profile Banner -->
+    <section class="trader-card">
+      <div class="trader-info">
+        <span class="trader-label">Авторизованный трейдер</span>
+        <h2 id="userName" class="trader-name">Загрузка профиля...</h2>
+      </div>
+      <div class="trader-mode-badge" id="modeBadge">⚪️ Ожидание старта</div>
+    </section>
+
+    <!-- Speedometer / Tachometer Gauge -->
+    <section class="gauge-section">
+      <div class="gauge-wrapper">
+        <canvas id="gaugeCanvas" width="280" height="160"></canvas>
+        <div class="gauge-center-content">
+          <div class="speed-val" id="speedValue">0<span class="unit">%</span></div>
+          <div class="speed-label" id="speedLabel">СКОРОСТЬ РАЗГОНА</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Key Metrics Grid -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-header">
+          <span class="metric-title">Свободный баланс</span>
+          <span class="metric-icon">💵</span>
+        </div>
+        <div class="metric-val" id="freeBalance">0.00 <span class="crypto">USDT</span></div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header">
+          <span class="metric-title">В разгоне</span>
+          <span class="metric-icon">🚀</span>
+        </div>
+        <div class="metric-val" id="tradingBalance">0.00 <span class="crypto">USDT</span></div>
+      </div>
+
+      <div class="metric-card highlight-card">
+        <div class="metric-header">
+          <span class="metric-title">Текущий PnL сессии</span>
+          <span class="metric-icon">📈</span>
+        </div>
+        <div class="metric-val pnl-positive" id="currentProfit">+0.00 <span class="crypto">USDT</span></div>
+        <div class="metric-sub" id="pnlPercent">+0.00%</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header">
+          <span class="metric-title">Всего зафиксировано</span>
+          <span class="metric-icon">🏆</span>
+        </div>
+        <div class="metric-val" id="totalProfit">0.00 <span class="crypto">USDT</span></div>
+      </div>
+    </section>
+
+    <!-- Live Performance Chart -->
+    <section class="chart-section">
+      <div class="section-header">
+        <div class="title-with-pulse">
+          <span class="live-indicator"></span>
+          <h3>Динамика доходности (Live)</h3>
+        </div>
+        <span class="chart-interval">HFT ALGO</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="pnlChart" width="340" height="130"></canvas>
+      </div>
+    </section>
+
+    <!-- Main Action Terminal Button -->
+    <section class="actions-section">
+      <button id="mainActionBtn" class="razgon-btn glow-btn">
+        <span class="btn-icon">⚡</span>
+        <span class="btn-text" id="actionBtnText">НАЧАТЬ РАЗГОН</span>
+      </button>
+
+      <div class="secondary-actions">
+        <button id="depositBtn" class="sec-btn">
+          <span>📥 Пополнить USDT</span>
+        </button>
+        <button id="withdrawBtn" class="sec-btn">
+          <span>📤 Вывести</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Live Deals Stream -->
+    <section class="deals-section">
+      <div class="section-header">
+        <h3>Лента ордеров алгоритма</h3>
+        <span class="orders-count" id="ordersCount">4 пары</span>
+      </div>
+      <div class="deals-list" id="dealsList">
+        <div class="deal-item">
+          <div class="deal-pair"><span class="deal-dot green"></span>BTC/USDT (LONG)</div>
+          <div class="deal-pnl green">+1.85$ (+2.1%)</div>
+        </div>
+        <div class="deal-item">
+          <div class="deal-pair"><span class="deal-dot green"></span>ETH/USDT (LONG)</div>
+          <div class="deal-pnl green">+0.94$ (+1.4%)</div>
+        </div>
+        <div class="deal-item">
+          <div class="deal-pair"><span class="deal-dot green"></span>SOL/USDT (LONG)</div>
+          <div class="deal-pnl green">+2.40$ (+3.6%)</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Modal: Mode Selector -->
+  <div class="modal" id="modeModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Выбор тактики разгона</h3>
+        <button class="modal-close" id="closeModeModal">&times;</button>
+      </div>
+      <div class="modes-list">
+        <div class="mode-item" data-mode="safe">
+          <div class="mode-title">🛡️ Safe Run</div>
+          <div class="mode-desc">Минимальный риск, мультибиржевой арбитраж. Защита капитала.</div>
+          <div class="mode-target">+3.5% ~ +8.0% PnL</div>
+        </div>
+        <div class="mode-item active" data-mode="optimal">
+          <div class="mode-title">⚡ Optimal Boost (Рекомендуем)</div>
+          <div class="mode-desc">Сбалансированный трендовый скальпинг BTC/ETH/SOL.</div>
+          <div class="mode-target">+12.0% ~ +25.0% PnL</div>
+        </div>
+        <div class="mode-item" data-mode="turbo">
+          <div class="mode-title">🔥 Turbo Razgon</div>
+          <div class="mode-desc">Агрессивный памп-скальпинг высоковолатильных альтов.</div>
+          <div class="mode-target">+30.0% ~ +75.0% PnL</div>
+        </div>
+      </div>
+      <div class="amount-input-box">
+        <label>Сумма в разгон (USDT):</label>
+        <input type="number" id="tradeAmountInput" value="50" min="10" step="5">
+      </div>
+      <button class="confirm-launch-btn" id="confirmLaunchBtn">🚀 ПОДТВЕРДИТЬ И ЗАПУСТИТЬ</button>
+    </div>
+  </div>
+
+  <!-- Modal: Deposit -->
+  <div class="modal" id="depositModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Пополнение USDT (TRC-20)</h3>
+        <button class="modal-close" id="closeDepositModal">&times;</button>
+      </div>
+      <div class="deposit-body">
+        <p class="dep-sub">Отправьте любую сумму (от 10 USDT) на адрес сети TRON:</p>
+        <div class="qr-container">
+          <img src="" id="depQrImage" alt="QR Code">
+        </div>
+        <div class="wallet-copy-box">
+          <input type="text" id="walletInput" readonly value="Загрузка...">
+          <button id="copyWalletBtn">Копировать</button>
+        </div>
+        <p class="dep-hint">После отправки перейдите в чат бота и нажмите кнопку «Я оплатил».</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
