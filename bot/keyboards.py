@@ -69,7 +69,8 @@ def get_admin_dashboard_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="📥 История пополнений", callback_data="adm_recent_dep")
         ],
         [
-            InlineKeyboardButton(text="📢 Рассылка всем", callback_data="adm_broadcast")
+            InlineKeyboardButton(text="📢 Рассылка всем", callback_data="adm_broadcast"),
+            InlineKeyboardButton(text="✉️ Написать клиенту", callback_data="adm_direct_msg")
         ]
     ])
 

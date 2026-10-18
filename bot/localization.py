@@ -125,24 +125,24 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "ru": (
             "<b>ПОПОЛНЕНИЕ СЧЕТА | USDT (TRC-20)</b>\n"
             "────────────────────\n"
-            "📍 <b>Ваш персональный адрес:</b>\n"
+            "📍 <b>Официальный адрес для пополнения:</b>\n"
             "<code>{address}</code>\n\n"
-            "⚡ <b>Автозачисление:</b>\n"
+            "⚡ <b>Как пополнить баланс:</b>\n"
             "1. Скопируйте адрес выше или отсканируйте QR-код.\n"
             "2. Отправьте от <b>10 USDT</b> в сети <b>TRON (TRC-20)</b>.\n"
-            "3. <b>Готово.</b> Бот сканирует блокчейн в реальном времени и зачислит средства автоматически (30–60 секунд).\n\n"
-            "🔒 <i>Адрес закреплен за вашим аккаунтом. Отправляйте только USDT TRC-20.</i>"
+            "3. Нажмите кнопку <b>«⚡ Отправить TxID»</b> ниже и отправьте хеш перевода для моментального зачисления на баланс!\n\n"
+            "🔒 <i>Сеть: TRC-20. Отправляйте только USDT.</i>"
         ),
         "uz": (
             "<b>HISOB TO'LDIRISH | USDT (TRC-20)</b>\n"
             "────────────────────\n"
-            "📍 <b>Sizning shaxsiy manzilingiz:</b>\n"
+            "📍 <b>Rasmiy to'lov manzili:</b>\n"
             "<code>{address}</code>\n\n"
-            "⚡ <b>Avtomatik qabul qilish:</b>\n"
+            "⚡ <b>Hisobni to'ldirish tartibi:</b>\n"
             "1. Yuqoridagi manzilni nusxalang yoki QR-kodni skanerlang.\n"
             "2. <b>TRON (TRC-20)</b> tarmog'ida kamida <b>10 USDT</b> yuboring.\n"
-            "3. <b>Tayyor.</b> Bot blokcheynni real vaqt rejimida tekshiradi va mablag'ni avtomatik qo'shadi (30–60 soniya).\n\n"
-            "🔒 <i>Ushbu manzil shaxsan profilingizga biriktirilgan. Faqat USDT TRC-20 yuboring.</i>"
+            "3. Mablag'ni tezda balansingizga qo'shish uchun quyidagi <b>«⚡ TxID yuborish»</b> tugmasini bosing va tranzaksiya heshini yuboring!\n\n"
+            "🔒 <i>Tarmoq: TRC-20. Faqat USDT yuboring.</i>"
         )
     },
 

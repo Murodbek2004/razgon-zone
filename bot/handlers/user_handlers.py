@@ -273,7 +273,7 @@ async def show_cabinet(message: Message):
 async def deposit_menu(message: Message):
     user_id = message.from_user.id
     user_lang = await get_user_lang(user_id)
-    addr, _ = await get_or_create_user_wallet(user_id)
+    addr = TRON_USDT_WALLET
 
     info_text = tr("deposit_info", user_lang, address=addr)
     qr_stream = await get_qr_code_stream(addr)
@@ -293,27 +293,8 @@ async def deposit_menu(message: Message):
         )
 
 @router.callback_query(F.data == "check_my_deposit_now")
-async def on_check_my_deposit_now(call: CallbackQuery):
-    user_id = call.from_user.id
-    user_lang = await get_user_lang(user_id)
-    addr, _ = await get_or_create_user_wallet(user_id)
-
-    scanning_text = "⏳ Сканирую блокчейн TRON..." if user_lang == "ru" else "⏳ TRON blokcheyni tekshirilmoqda..."
-    await call.answer(scanning_text)
-
-    credited = await deposit_watcher.scan_now_for_user(call.bot, user_id, addr)
-    if credited:
-        success_text = "🎉 Транзакция подтверждена в сети TRON и зачислена на баланс!" if user_lang == "ru" else "🎉 Tranzaksiya TRON tarmog'ida tasdiqlandi va hisobingizga tushdi!"
-        await call.message.answer(success_text)
-    else:
-        wait_text = (
-            "ℹ️ Новых подтвержденных переводов пока не найдено.\n\n"
-            "Если вы только что сделали перевод, дождитесь записи блока в сети TRON (обычно 30–60 сек). Бот автоматически зачислит баланс!"
-            if user_lang == "ru" else
-            "ℹ️ Hozircha yangi tasdiqlangan to'lov topilmadi.\n\n"
-            "Agar yangi o'tkazma qilgan bo'lsangiz, TRON tarmog'ida blok yozilishini kuting (odatda 30–60 soniya). Bot mablag'ni avtomatik balansingizga qo'shadi!"
-        )
-        await call.answer(wait_text, show_alert=True)
+async def on_check_my_deposit_now(call: CallbackQuery, state: FSMContext):
+    await ask_txid(call, state)
 
 @router.callback_query(F.data == "enter_deposit_txid")
 async def ask_txid(call: CallbackQuery, state: FSMContext):
@@ -346,10 +327,8 @@ async def process_deposit_txid(message: Message, state: FSMContext):
     wait_msg = "⏳ <b>Связываюсь с блокчейном TRON...</b>\nПроверяю статус транзакции USDT..." if user_lang == "ru" else "⏳ <b>TRON blokcheyni bilan bog'lanilmoqda...</b>\nUSDT tranzaksiya holati tekshirilmoqda..."
     status_msg = await message.answer(wait_msg, parse_mode="HTML")
 
-    addr, _ = await get_or_create_user_wallet(user_id)
+    addr = TRON_USDT_WALLET
     is_valid, amount, info = await verify_tron_tx_onchain(txid, addr, MIN_DEPOSIT)
-    if not is_valid:
-        is_valid, amount, info = await verify_tron_tx_onchain(txid, TRON_USDT_WALLET, MIN_DEPOSIT)
 
     if not is_valid:
         if user_lang == "uz":

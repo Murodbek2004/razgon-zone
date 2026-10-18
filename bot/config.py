@@ -13,7 +13,7 @@ admin_ids_raw = os.getenv("ADMIN_IDS", "")
 ADMIN_IDS = [int(i.strip()) for i in admin_ids_raw.split(",") if i.strip().isdigit()]
 
 # Tron TRC-20 Wallet for Deposits
-TRON_USDT_WALLET = os.getenv("TRON_USDT_WALLET", "TXq1yRazgonZoneWalletTronTRC20ExampleXX").strip()
+TRON_USDT_WALLET = os.getenv("TRON_USDT_WALLET", "TEbCaaUPZL85DnhL1X87yGfodrmc786CNs").strip()
 
 # WebApp URL
 WEBAPP_URL = os.getenv("WEBAPP_URL", "https://razgon-zone.up.railway.app").rstrip("/")

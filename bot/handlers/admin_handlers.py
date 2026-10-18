@@ -35,6 +35,8 @@ class AdminStates(StatesGroup):
     waiting_for_balance_delta = State()
     waiting_for_broadcast = State()
     waiting_for_session_profit = State()
+    waiting_for_direct_msg_recipient = State()
+    waiting_for_direct_msg_text = State()
 
 def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS
@@ -354,6 +356,7 @@ async def process_user_query(message: Message, state: FSMContext):
             InlineKeyboardButton(text="➖ Списать USDT", callback_data=f"adm_sub_bal:{u['user_id']}")
         ],
         [
+            InlineKeyboardButton(text="✉️ Написать клиенту", callback_data=f"adm_send_msg:{u['user_id']}"),
             InlineKeyboardButton(text="❌ Закрыть", callback_data="adm_cancel")
         ]
     ])
@@ -581,3 +584,153 @@ async def on_adm_cancel(call: CallbackQuery, state: FSMContext):
     await state.clear()
     await call.message.delete()
     await call.answer("Закрыто")
+
+# --- Direct Messaging from Bot to User ---
+@router.message(Command("msg", "send"))
+async def admin_msg_command(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    parts = message.text.split(maxsplit=2)
+    if len(parts) >= 3:
+        target_query = parts[1].strip()
+        text_content = parts[2].strip()
+        card = await admin_get_user_card(target_query)
+        if not card:
+            await message.answer(f"❌ Пользователь '{target_query}' не найден в базе данных.")
+            return
+        u = card["user"]
+        await _execute_send_user_message(message, u["user_id"], u["first_name"], u.get("language", "ru"), text_content)
+        return
+    elif len(parts) == 2:
+        target_query = parts[1].strip()
+        card = await admin_get_user_card(target_query)
+        if not card:
+            await message.answer(f"❌ Пользователь '{target_query}' не найден в базе данных.")
+            return
+        u = card["user"]
+        await state.update_data(target_user_id=u["user_id"], target_name=u["first_name"], target_lang=u.get("language", "ru"))
+        await state.set_state(AdminStates.waiting_for_direct_msg_text)
+        await message.answer(
+            f"👤 <b>Клиент:</b> {u['first_name']} (@{u.get('username') or 'N/A'}, ID: <code>{u['user_id']}</code>)\n"
+            f"🌐 Язык: <b>{u.get('language', 'ru').upper()}</b>\n\n"
+            "Введите текст сообщения, которое бот отправит клиенту:\n"
+            "<i>(Или отправьте 'отмена')</i>",
+            parse_mode="HTML"
+        )
+        return
+    else:
+        await state.set_state(AdminStates.waiting_for_direct_msg_recipient)
+        await message.answer(
+            "✉️ <b>ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ ОТ ИМЕНИ БОТА</b>\n"
+            "────────────────────\n"
+            "Введите <b>User ID</b> (число) или <b>@username</b> пользователя:\n"
+            "<i>(Или отправьте 'отмена')</i>",
+            parse_mode="HTML"
+        )
+
+@router.callback_query(F.data == "adm_direct_msg")
+async def on_direct_msg_click(call: CallbackQuery, state: FSMContext):
+    if not is_admin(call.from_user.id):
+        return
+    await state.set_state(AdminStates.waiting_for_direct_msg_recipient)
+    await call.message.answer(
+        "✉️ <b>ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ ОТ ИМЕНИ БОТА</b>\n"
+        "────────────────────\n"
+        "Введите <b>User ID</b> (число) или <b>@username</b> пользователя, которому хотите написать:\n"
+        "<i>(Или отправьте 'отмена')</i>",
+        parse_mode="HTML"
+    )
+    await call.answer()
+
+@router.callback_query(F.data.startswith("adm_send_msg:"))
+async def on_send_msg_to_user_click(call: CallbackQuery, state: FSMContext):
+    if not is_admin(call.from_user.id):
+        return
+    target_id = call.data.split(":")[1].strip()
+    card = await admin_get_user_card(target_id)
+    if not card:
+        await call.answer("Пользователь не найден.", show_alert=True)
+        return
+    u = card["user"]
+    await state.update_data(target_user_id=u["user_id"], target_name=u["first_name"], target_lang=u.get("language", "ru"))
+    await state.set_state(AdminStates.waiting_for_direct_msg_text)
+    await call.message.answer(
+        f"✉️ <b>Отправка сообщения клиенту:</b> {u['first_name']} (@{u.get('username') or 'N/A'}, ID: <code>{u['user_id']}</code>)\n"
+        f"🌐 Язык: <b>{u.get('language', 'ru').upper()}</b>\n\n"
+        "Введите текст сообщения (поддерживается HTML-разметка):\n"
+        "<i>(Или отправьте 'отмена')</i>",
+        parse_mode="HTML"
+    )
+    await call.answer()
+
+@router.message(AdminStates.waiting_for_direct_msg_recipient)
+async def process_direct_msg_recipient(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    query = message.text.strip()
+    if query.lower() == "отмена":
+        await state.clear()
+        await message.answer("❌ Отправка сообщения отменена.")
+        return
+    card = await admin_get_user_card(query)
+    if not card:
+        await message.answer("❌ Пользователь с таким ID или логином не найден в базе.\nВведите другой ID / @username или напишите 'отмена':")
+        return
+    u = card["user"]
+    await state.update_data(target_user_id=u["user_id"], target_name=u["first_name"], target_lang=u.get("language", "ru"))
+    await state.set_state(AdminStates.waiting_for_direct_msg_text)
+    await message.answer(
+        f"👤 <b>Клиент найден:</b> {u['first_name']} (@{u.get('username') or 'N/A'}, ID: <code>{u['user_id']}</code>)\n"
+        f"🌐 Язык клиента: <b>{u.get('language', 'ru').upper()}</b>\n\n"
+        "Введите текст сообщения для отправки:\n"
+        "<i>(Или отправьте 'отмена')</i>",
+        parse_mode="HTML"
+    )
+
+@router.message(AdminStates.waiting_for_direct_msg_text)
+async def process_direct_msg_text(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    text_content = message.text
+    if text_content and text_content.lower() == "отмена":
+        await state.clear()
+        await message.answer("❌ Отправка сообщения отменена.")
+        return
+    data = await state.get_data()
+    target_user_id = data["target_user_id"]
+    target_name = data.get("target_name", "Клиент")
+    target_lang = data.get("target_lang", "ru")
+    await state.clear()
+
+    await _execute_send_user_message(message, target_user_id, target_name, target_lang, text_content)
+
+async def _execute_send_user_message(message: Message, target_user_id: int, target_name: str, target_lang: str, text_content: str):
+    header = (
+        "💬 <b>СООБЩЕНИЕ ОТ СЛУЖБЫ ПОДДЕРЖКИ | RAZGON ZONE</b>\n"
+        "────────────────────\n"
+        if target_lang == "ru" else
+        "💬 <b>QO'LLAB-QUVVATLASh XIZMATIDAN XABAR | RAZGON ZONE</b>\n"
+        "────────────────────\n"
+    )
+    user_msg = f"{header}{text_content}"
+
+    try:
+        await message.bot.send_message(
+            chat_id=target_user_id,
+            text=user_msg,
+            parse_mode="HTML"
+        )
+        await message.answer(
+            f"✅ <b>СООБЩЕНИЕ УСПЕШНО ДОСТАВЛЕНО!</b>\n\n"
+            f"👤 Получатель: <b>{target_name}</b> (ID: <code>{target_user_id}</code>)\n"
+            f"🌐 Язык клиента: <b>{target_lang.upper()}</b>\n\n"
+            f"📝 <b>Текст сообщения:</b>\n{text_content}",
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        await message.answer(
+            f"⚠️ <b>Ошибка при отправке сообщения клиенту:</b>\n"
+            f"<code>{str(e)}</code>\n\n"
+            f"<i>Возможная причина: пользователь заблокировал бота или остановил диалог.</i>",
+            parse_mode="HTML"
+        )
