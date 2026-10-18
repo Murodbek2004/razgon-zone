@@ -9,7 +9,7 @@ from bot.database import (
     stop_trading_session
 )
 from bot.trading_engine import engine
-from bot.tron_service import generate_qr_code, TRON_USDT_WALLET
+from bot.tron_service import TRON_USDT_WALLET
 from bot.config import SERVICE_FEE_PERCENT
 
 STATIC_DIR = Path(__file__).resolve().parent / "bot" / "webapp"

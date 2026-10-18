@@ -2,105 +2,74 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
     ReplyKeyboardMarkup,
-    KeyboardButton,
-    WebAppInfo
+    KeyboardButton
 )
-from .config import WEBAPP_URL, TRADING_MODES
+from .localization import tr, LANGUAGES
 
-def get_main_reply_keyboard(is_trading: bool = False) -> ReplyKeyboardMarkup:
-    """Bottom persistent menu keyboard"""
+def get_main_reply_keyboard(lang: str = "ru", is_trading: bool = False) -> ReplyKeyboardMarkup:
+    """Bottom persistent menu keyboard (multilingual RU / UZ)"""
     kb = []
-    
-    # WebApp button on top
-    if WEBAPP_URL:
-        kb.append([KeyboardButton(text="⚡ Razgon Terminal (Web App)", web_app=WebAppInfo(url=WEBAPP_URL))])
     
     if is_trading:
         kb.append([
-            KeyboardButton(text="📊 Статус торговли"),
-            KeyboardButton(text="🛑 Остановить торговлю")
+            KeyboardButton(text=tr("btn_trade_status", lang)),
+            KeyboardButton(text=tr("btn_stop_trade", lang))
+        ])
+        kb.append([
+            KeyboardButton(text=tr("btn_cabinet", lang))
         ])
     else:
         kb.append([
-            KeyboardButton(text="🚀 Начать торговлю"),
-            KeyboardButton(text="💼 Личный кабинет")
+            KeyboardButton(text=tr("btn_start_trade", lang)),
+            KeyboardButton(text=tr("btn_cabinet", lang))
         ])
 
     kb.append([
-        KeyboardButton(text="📥 Пополнить (USDT)"),
-        KeyboardButton(text="📤 Вывод средств")
+        KeyboardButton(text=tr("btn_deposit", lang)),
+        KeyboardButton(text=tr("btn_withdraw", lang))
     ])
     kb.append([
-        KeyboardButton(text="👥 Партнеры"),
-        KeyboardButton(text="ℹ️ О платформе")
+        KeyboardButton(text=tr("btn_change_lang", lang)),
+        KeyboardButton(text=tr("btn_about", lang))
     ])
 
     return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
-def get_modes_inline_keyboard() -> InlineKeyboardMarkup:
-    """Trading mode selector"""
+def get_language_inline_keyboard() -> InlineKeyboardMarkup:
+    """Language selection keyboard"""
     buttons = [
-        [InlineKeyboardButton(
-            text="🛡️ Safe Run (+3.5% ~ +8%)",
-            callback_data="select_mode:safe"
-        )],
-        [InlineKeyboardButton(
-            text="⚡ Optimal Boost (+12% ~ +25%)",
-            callback_data="select_mode:optimal"
-        )],
-        [InlineKeyboardButton(
-            text="🔥 Turbo Razgon (+30% ~ +75%)",
-            callback_data="select_mode:turbo"
-        )],
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_action")]
+        [
+            InlineKeyboardButton(text="🇷🇺 Русский", callback_data="set_lang:ru"),
+            InlineKeyboardButton(text="🇺🇿 O'zbekcha", callback_data="set_lang:uz")
+        ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_confirm_trade_keyboard(mode: str, amount: float) -> InlineKeyboardMarkup:
-    """Confirm launch of trading session"""
+def get_deposit_keyboard(lang: str = "ru") -> InlineKeyboardMarkup:
+    """Deposit actions with auto-check & manual fallback"""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="🚀 ПОДТВЕРДИТЬ СТАРТ", callback_data=f"confirm_start:{mode}:{amount}"),
-            InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_action")
-        ]
+        [InlineKeyboardButton(text=tr("btn_check_deposit", lang), callback_data="check_my_deposit_now")],
+        [InlineKeyboardButton(text=tr("btn_manual_txid", lang), callback_data="enter_deposit_txid")],
+        [InlineKeyboardButton(text=tr("btn_support", lang), url="https://t.me/RazgonZoneSupport")]
     ])
 
-def get_live_status_keyboard() -> InlineKeyboardMarkup:
-    """Keyboard on live trade status message"""
-    buttons = [
-        [
-            InlineKeyboardButton(text="🔄 Обновить статус", callback_data="refresh_live_status"),
-            InlineKeyboardButton(text="🛑 Остановить", callback_data="ask_stop_trade")
-        ]
-    ]
-    if WEBAPP_URL:
-        buttons.append([InlineKeyboardButton(text="📈 Открыть в WebApp терминале", web_app=WebAppInfo(url=WEBAPP_URL))])
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
-
-def get_confirm_stop_keyboard() -> InlineKeyboardMarkup:
-    """Confirmation to stop trading"""
+def get_admin_dashboard_keyboard() -> InlineKeyboardMarkup:
+    """Admin interactive dashboard with session completion"""
     return InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="🛑 ДА, ЗАФИКСИРОВАТЬ И ВЫЙТИ", callback_data="do_stop_trade")
+            InlineKeyboardButton(text="📊 Обновить сводку", callback_data="adm_refresh_stats"),
+            InlineKeyboardButton(text="🚀 Активные разгоны (Отчет)", callback_data="adm_active_sessions")
         ],
         [
-            InlineKeyboardButton(text="◀️ Продолжить торговлю", callback_data="continue_trade")
-        ]
-    ])
-
-def get_deposit_keyboard() -> InlineKeyboardMarkup:
-    """Deposit actions"""
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Я оплатил (Ввести TxID)", callback_data="enter_deposit_txid")],
-        [InlineKeyboardButton(text="💬 Поддержка", url="https://t.me/RazgonZoneSupport")]
-    ])
-
-def get_admin_deposit_keyboard(deposit_id: int) -> InlineKeyboardMarkup:
-    """Admin review of deposit"""
-    return InlineKeyboardMarkup(inline_keyboard=[
+            InlineKeyboardButton(text="🔑 Кошельки клиентов", callback_data="adm_view_wallets"),
+            InlineKeyboardButton(text="👤 Поиск юзера / Баланс", callback_data="adm_find_user")
+        ],
         [
-            InlineKeyboardButton(text="✅ Подтвердить + Баланс", callback_data=f"admin_dep_ok:{deposit_id}"),
-            InlineKeyboardButton(text="❌ Отклонить", callback_data=f"admin_dep_no:{deposit_id}")
+            InlineKeyboardButton(text="📤 Заявки на вывод", callback_data="adm_pending_wdr"),
+            InlineKeyboardButton(text="📥 История пополнений", callback_data="adm_recent_dep")
+        ],
+        [
+            InlineKeyboardButton(text="📢 Рассылка всем", callback_data="adm_broadcast")
         ]
     ])
 

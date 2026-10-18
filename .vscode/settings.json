@@ -1,13 +1,19 @@
 {
-  "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
-  "python.analysis.autoSearchPaths": true,
-  "python.analysis.extraPaths": [
-    "${workspaceFolder}"
+  "python.defaultInterpreterPath": ".venv\\Scripts\\python.exe",
+  "python-envs.globalSearchPaths": [
+    "C:\\Program Files\\Python315",
+    "C:\\Program Files\\PyManager"
   ],
+  "python-envs.workspaceSearchPaths": [
+    "./.venv"
+  ],
+  "python-envs.alwaysUseUv": false,
+  "python.analysis.autoSearchPaths": true,
   "python.analysis.typeCheckingMode": "off",
   "python.analysis.diagnosticSeverityOverrides": {
     "reportMissingImports": "none",
     "reportMissingModuleSource": "none",
     "reportGeneralTypeIssues": "none"
-  }
+  },
+  "python-envs.defaultEnvManager": "ms-python.python:system"
 }
