@@ -22,7 +22,7 @@ WEBAPP_URL = os.getenv("WEBAPP_URL", "https://razgon-zone.up.railway.app").rstri
 PORT = int(os.getenv("PORT", "8080"))
 
 # Financial & Trading settings
-MIN_DEPOSIT = float(os.getenv("MIN_DEPOSIT", "10.0"))
+MIN_DEPOSIT = float(os.getenv("MIN_DEPOSIT", "50.0"))
 MIN_WITHDRAW = float(os.getenv("MIN_WITHDRAW", "10.0"))
 SERVICE_FEE_PERCENT = float(os.getenv("SERVICE_FEE_PERCENT", "20.0"))  # Service share of profit
 REFERRAL_BONUS_PERCENT = float(os.getenv("REFERRAL_BONUS_PERCENT", "5.0"))
