@@ -129,7 +129,7 @@ TEXTS: Dict[str, Dict[str, str]] = {
             "<code>{address}</code>\n\n"
             "⚡ <b>Как пополнить баланс:</b>\n"
             "1. Скопируйте адрес выше или отсканируйте QR-код.\n"
-            "2. Отправьте от <b>50 USDT</b> в сети <b>TRON (TRC-20)</b>.\n"
+            "2. Отправьте от <b>40 USDT</b> в сети <b>TRON (TRC-20)</b>.\n"
             "3. Нажмите кнопку <b>«⚡ Отправить TxID»</b> ниже и отправьте хеш перевода для моментального зачисления на баланс!\n\n"
             "🔒 <i>Сеть: TRC-20. Отправляйте только USDT.</i>"
         ),
@@ -140,7 +140,7 @@ TEXTS: Dict[str, Dict[str, str]] = {
             "<code>{address}</code>\n\n"
             "⚡ <b>Hisobni to'ldirish tartibi:</b>\n"
             "1. Yuqoridagi manzilni nusxalang yoki QR-kodni skanerlang.\n"
-            "2. <b>TRON (TRC-20)</b> tarmog'ida kamida <b>50 USDT</b> yuboring.\n"
+            "2. <b>TRON (TRC-20)</b> tarmog'ida kamida <b>40 USDT</b> yuboring.\n"
             "3. Mablag'ni tezda balansingizga qo'shish uchun quyidagi <b>«⚡ TxID yuborish»</b> tugmasini bosing va tranzaksiya heshini yuboring!\n\n"
             "🔒 <i>Tarmoq: TRC-20. Faqat USDT yuboring.</i>"
         )
@@ -151,13 +151,13 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "ru": (
             "⚠️ <b>Недостаточно средств для старта разгона.</b>\n\n"
             "Ваш доступный баланс: <b>{balance:.2f} USDT</b>\n"
-            "Минимум для входа: <b>50.00 USDT</b>\n\n"
+            "Минимум для входа: <b>40.00 USDT</b>\n\n"
             "Пополните счет через кнопку <b>«📥 Пополнить USDT»</b>."
         ),
         "uz": (
             "⚠️ <b>Razgonni boshlash uchun mablag' yetarli emas.</b>\n\n"
             "Mavjud balansingiz: <b>{balance:.2f} USDT</b>\n"
-            "Boshlash uchun minimal summa: <b>50.00 USDT</b>\n\n"
+            "Boshlash uchun minimal summa: <b>40.00 USDT</b>\n\n"
             "Hisobni to'ldirish uchun <b>«📥 USDT to'ldirish»</b> tugmasini bosing."
         )
     },

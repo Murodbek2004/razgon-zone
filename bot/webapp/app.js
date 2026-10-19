@@ -271,8 +271,8 @@
 
   confirmLaunchBtn.addEventListener("click", async () => {
     const amount = parseFloat(tradeAmountInput.value);
-    if (!amount || amount < 10) {
-      alert("Минимальная сумма входа — 10 USDT.");
+    if (!amount || amount < 40) {
+      alert("Минимальная сумма входа — 40 USDT.");
       return;
     }
 

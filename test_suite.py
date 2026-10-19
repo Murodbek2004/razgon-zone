@@ -155,7 +155,7 @@ async def run_tests():
     # 11. User Stops Trading in 1 Click (Deposit 100% returned)
     user_trade_before = await get_user(test_user_id)
     rem_bal = user_trade_before["balance"]
-    assert rem_bal >= 10.0, "Must have balance"
+    assert rem_bal >= 40.0, "Must have balance"
     sess2 = await start_simple_trading(test_user_id)
     assert sess2 is not None
 

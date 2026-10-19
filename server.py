@@ -45,7 +45,7 @@ async def handle_start(request: web.Request) -> web.Response:
         data = await request.json()
         user_id = int(data.get("user_id"))
         mode = data.get("mode", "optimal")
-        amount = float(data.get("amount", 10.0))
+        amount = float(data.get("amount", 40.0))
     except Exception:
         return web.json_response({"error": "Invalid request payload"}, status=400)
 

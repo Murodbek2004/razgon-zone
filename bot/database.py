@@ -531,12 +531,12 @@ async def set_user_lang(user_id: int, lang: str):
         await db.commit()
 
 async def start_simple_trading(user_id: int) -> Optional[Dict[str, Any]]:
-    """Starts trading with all available balance (minimum 50.0 USDT)"""
+    """Starts trading with all available balance (minimum 40.0 USDT)"""
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute("SELECT balance, in_trading_balance FROM users WHERE user_id = ?", (user_id,)) as cursor:
             user = await cursor.fetchone()
-            if not user or user["balance"] < 50.0:
+            if not user or user["balance"] < 40.0:
                 return None
             amount = round(user["balance"], 2)
 
