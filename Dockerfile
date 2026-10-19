@@ -1,8 +1,8 @@
 FROM python:3.11-slim
 
-# Prevent python from writing pyc files and buffering stdout/stderr
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PORT=7860
 
 WORKDIR /app
 
@@ -12,15 +12,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Set up non-root user required by Hugging Face Spaces (UID 1000)
+RUN useradd -m -u 1000 user
+USER user
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH
+
+WORKDIR $HOME/app
+
 # Install python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --chown=user:user requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Copy project code
-COPY . .
+COPY --chown=user:user . .
 
-# Expose port (Railway will set PORT env)
-EXPOSE 8080
+EXPOSE 7860
 
-# Run entry point
 CMD ["python", "main.py"]

@@ -1,3 +1,12 @@
+---
+title: Razgon Zone
+emoji: 🚀
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+---
+
 # ⚡ RAZGON ZONE — HFT & Crypto Trading Telegram Platform
 
 Платформа алгоритмического разгона депозитов с приемом **USDT TRC-20**, live-мониторингом торговли, спидометром разгона, фиксацией прибыли в 1 клик и встроенным **Telegram Mini App (Web App)**.
