@@ -465,6 +465,21 @@ async def admin_modify_balance(user_id: int, delta: float) -> Tuple[bool, float,
         await db.commit()
         return True, new_bal, "ok"
 
+async def admin_set_balance(user_id: int, exact_amount: float) -> Tuple[bool, float, str]:
+    """Admin sets exact balance for user"""
+    if exact_amount < 0:
+        return False, 0.0, "Баланс не может быть отрицательным."
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            if not row:
+                return False, 0.0, "Пользователь не найден в базе данных."
+        new_bal = round(float(exact_amount), 2)
+        await db.execute("UPDATE users SET balance = ? WHERE user_id = ?", (new_bal, user_id))
+        await db.commit()
+        return True, new_bal, "ok"
+
 async def get_all_user_ids() -> List[int]:
     """Returns all registered user IDs"""
     async with aiosqlite.connect(DB_PATH) as db:

@@ -12,6 +12,7 @@ from ..database import (
     get_all_deposit_wallets,
     admin_get_user_card,
     admin_modify_balance,
+    admin_set_balance,
     get_all_user_ids,
     get_recent_deposits,
     get_pending_withdrawals_list,
@@ -33,6 +34,7 @@ router = Router()
 class AdminStates(StatesGroup):
     waiting_for_user_query = State()
     waiting_for_balance_delta = State()
+    waiting_for_exact_balance = State()
     waiting_for_broadcast = State()
     waiting_for_session_profit = State()
     waiting_for_direct_msg_recipient = State()
@@ -356,13 +358,71 @@ async def process_user_query(message: Message, state: FSMContext):
             InlineKeyboardButton(text="➖ Списать USDT", callback_data=f"adm_sub_bal:{u['user_id']}")
         ],
         [
-            InlineKeyboardButton(text="✉️ Написать клиенту", callback_data=f"adm_send_msg:{u['user_id']}"),
+            InlineKeyboardButton(text="✏️ Установить баланс", callback_data=f"adm_set_bal:{u['user_id']}"),
+            InlineKeyboardButton(text="✉️ Написать клиенту", callback_data=f"adm_send_msg:{u['user_id']}")
+        ],
+        [
             InlineKeyboardButton(text="❌ Закрыть", callback_data="adm_cancel")
         ]
     ])
 
     await message.answer(text, reply_markup=kb, parse_mode="HTML")
     await state.clear()
+
+@router.callback_query(F.data.startswith("adm_set_bal:"))
+async def on_set_balance_click(call: CallbackQuery, state: FSMContext):
+    if not is_admin(call.from_user.id):
+        return
+    target_user_id = int(call.data.split(":")[1])
+    await state.update_data(target_user_id=target_user_id)
+    await state.set_state(AdminStates.waiting_for_exact_balance)
+    await call.message.answer(
+        f"✏️ <b>УСТАНОВКА БАЛАНСА ПОЛЬЗОВАТЕЛЮ</b> (ID: <code>{target_user_id}</code>)\n\n"
+        "Введите <b>точное значение нового баланса</b> (в USDT, например: <code>150.50</code>):\n"
+        "<i>(Или отправьте 'отмена')</i>",
+        parse_mode="HTML"
+    )
+    await call.answer()
+
+@router.message(AdminStates.waiting_for_exact_balance)
+async def process_exact_balance(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    text = message.text.strip()
+    if text.lower() == "отмена":
+        await state.clear()
+        await message.answer("❌ Изменение баланса отменено.")
+        return
+    data = await state.get_data()
+    target_user_id = data["target_user_id"]
+    await state.clear()
+
+    try:
+        new_val = float(text.replace(",", ".").strip())
+    except ValueError:
+        await message.answer("⚠️ Введено не число. Действие отменено.")
+        return
+
+    ok, new_bal, reason = await admin_set_balance(target_user_id, new_val)
+    if not ok:
+        await message.answer(f"❌ Ошибка: {reason}")
+        return
+
+    await message.answer(
+        f"✅ <b>Баланс пользователя успешно обновлен!</b>\n"
+        f"👤 ID: <code>{target_user_id}</code>\n"
+        f"💰 Новый баланс: <b>{new_bal:.2f} USDT</b>",
+        parse_mode="HTML"
+    )
+
+    try:
+        notify_text = (
+            f"🔔 <b>Обновление счета | Razgon Zone</b>\n\n"
+            f"💰 Ваш актуальный свободный баланс: <b>{new_bal:.2f} USDT</b>"
+        )
+        await message.bot.send_message(chat_id=target_user_id, text=notify_text, parse_mode="HTML")
+    except Exception:
+        pass
 
 @router.callback_query(F.data.startswith("adm_add_bal:") | F.data.startswith("adm_sub_bal:"))
 async def on_balance_action_click(call: CallbackQuery, state: FSMContext):
@@ -418,6 +478,102 @@ async def process_balance_delta(message: Message, state: FSMContext):
             f"💰 Ваш актуальный баланс: <b>{new_bal:.2f} USDT</b>"
         )
         await message.bot.send_message(chat_id=target_user_id, text=notify_text, parse_mode="HTML")
+    except Exception:
+        pass
+
+@router.message(Command("setbal"))
+async def admin_setbal_command(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+    parts = message.text.split()
+    if len(parts) < 3:
+        await message.answer(
+            "ℹ️ <b>Формат команды:</b>\n"
+            "<code>/setbal &lt;user_id или @username&gt; &lt;сумма&gt;</code>\n\n"
+            "<b>Примеры:</b>\n"
+            "<code>/setbal 8992609006 250</code>\n"
+            "<code>/setbal @username 100.50</code>",
+            parse_mode="HTML"
+        )
+        return
+    target_query = parts[1].strip()
+    try:
+        exact_val = float(parts[2].replace(",", ".").strip())
+    except ValueError:
+        await message.answer("⚠️ Неверная сумма. Введите число.")
+        return
+
+    card = await admin_get_user_card(target_query)
+    if not card:
+        await message.answer(f"❌ Пользователь '{target_query}' не найден.")
+        return
+    u = card["user"]
+    ok, new_bal, reason = await admin_set_balance(u["user_id"], exact_val)
+    if not ok:
+        await message.answer(f"❌ Ошибка: {reason}")
+        return
+    await message.answer(
+        f"✅ <b>Баланс успешно установлен!</b>\n"
+        f"👤 Клиент: {u['first_name']} (@{u.get('username') or 'N/A'}, ID: <code>{u['user_id']}</code>)\n"
+        f"💰 Баланс: <b>{new_bal:.2f} USDT</b>",
+        parse_mode="HTML"
+    )
+    try:
+        notify_text = (
+            f"🔔 <b>Обновление счета | Razgon Zone</b>\n\n"
+            f"💰 Ваш актуальный баланс: <b>{new_bal:.2f} USDT</b>"
+        )
+        await message.bot.send_message(chat_id=u["user_id"], text=notify_text, parse_mode="HTML")
+    except Exception:
+        pass
+
+@router.message(Command("addbal", "subbal"))
+async def admin_add_sub_bal_command(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+    is_add = message.text.startswith("/addbal")
+    parts = message.text.split()
+    cmd_name = "/addbal" if is_add else "/subbal"
+    if len(parts) < 3:
+        await message.answer(
+            f"ℹ️ <b>Формат команды:</b>\n"
+            f"<code>{cmd_name} &lt;user_id или @username&gt; &lt;сумма&gt;</code>\n\n"
+            f"<b>Пример:</b>\n"
+            f"<code>{cmd_name} 8992609006 50</code>",
+            parse_mode="HTML"
+        )
+        return
+    target_query = parts[1].strip()
+    try:
+        val = float(parts[2].replace(",", ".").strip())
+    except ValueError:
+        await message.answer("⚠️ Неверная сумма. Введите число.")
+        return
+    card = await admin_get_user_card(target_query)
+    if not card:
+        await message.answer(f"❌ Пользователь '{target_query}' не найден.")
+        return
+    u = card["user"]
+    delta = val if is_add else -val
+    ok, new_bal, reason = await admin_modify_balance(u["user_id"], delta)
+    if not ok:
+        await message.answer(f"❌ Ошибка: {reason}")
+        return
+    action_name = "начислено" if is_add else "списано"
+    sign = "+" if is_add else "-"
+    await message.answer(
+        f"✅ <b>Успешно {action_name} {sign}{val:.2f} USDT!</b>\n"
+        f"👤 Клиент: {u['first_name']} (@{u.get('username') or 'N/A'}, ID: <code>{u['user_id']}</code>)\n"
+        f"💰 Новый баланс: <b>{new_bal:.2f} USDT</b>",
+        parse_mode="HTML"
+    )
+    try:
+        notify_text = (
+            f"🔔 <b>Уведомление по счету</b>\n\n"
+            f"Вам {action_name}: <b>{sign}{val:.2f} USDT</b>\n"
+            f"💰 Ваш актуальный баланс: <b>{new_bal:.2f} USDT</b>"
+        )
+        await message.bot.send_message(chat_id=u["user_id"], text=notify_text, parse_mode="HTML")
     except Exception:
         pass
 
