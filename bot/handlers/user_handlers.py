@@ -158,13 +158,13 @@ async def handle_start_trade(message: Message):
     for admin_id in ADMIN_IDS:
         try:
             admin_notify = (
-                f"🚀 <b>[НОВЫЙ РАЗГОН ЗАПУЩЕН В РАБОТУ]</b>\n\n"
+                f"🔔 <b>[ОПОВЕЩЕНИЕ АДМИНИСТРАТОРА]</b>\n"
+                f"🚀 <b>Новый разгон запущен в работу</b>\n\n"
                 f"👤 Трейдер: @{message.from_user.username or 'NoUser'} ({message.from_user.first_name})\n"
                 f"🆔 Telegram ID: <code>{user_id}</code>\n"
                 f"💵 Депозит в разгоне: <b>{deposit_amount:.2f} USDT</b>\n"
                 f"🆔 Сессия: <code>#{session_id}</code>\n"
-                f"🌐 Язык: <b>{user_lang.upper()}</b>\n\n"
-                f"<i>После окончания торгов отправьте отчет через /admin.</i>"
+                f"🌐 Язык: <b>{user_lang.upper()}</b>"
             )
             await message.bot.send_message(chat_id=admin_id, text=admin_notify, parse_mode="HTML")
         except Exception:
@@ -225,7 +225,8 @@ async def handle_stop_trade(message: Message):
             await message.bot.send_message(
                 chat_id=admin_id,
                 text=(
-                    f"🛑 <b>[РАЗГОН ОСТАНОВЛЕН КЛИЕНТОМ]</b>\n\n"
+                    f"🔔 <b>[ОПОВЕЩЕНИЕ АДМИНИСТРАТОРА]</b>\n"
+                    f"🛑 <b>Разгон остановлен клиентом</b>\n\n"
                     f"👤 Трейдер: @{message.from_user.username or 'NoUser'} (ID: <code>{user_id}</code>)\n"
                     f"💵 Депозит возвращен на баланс: <b>{deposit:.2f} USDT</b>\n"
                     f"🌐 Язык: <b>{user_lang.upper()}</b>"
@@ -383,7 +384,8 @@ async def process_deposit_txid(message: Message, state: FSMContext):
     for admin_id in ADMIN_IDS:
         try:
             admin_msg = (
-                f"⚡ <b>[АВТО-ПОПОЛНЕНИЕ USDT]</b>\n\n"
+                f"🔔 <b>[ОПОВЕЩЕНИЕ АДМИНИСТРАТОРА]</b>\n"
+                f"⚡ <b>Авто-пополнение USDT</b>\n\n"
                 f"👤 Пользователь: @{message.from_user.username or 'NoUser'} (ID: <code>{user_id}</code>)\n"
                 f"💰 Сумма: <b>+{amount:.2f} USDT</b>\n"
                 f"🔗 Хеш: <code>{txid}</code>\n"
@@ -478,7 +480,8 @@ async def process_withdraw_address(message: Message, state: FSMContext):
     for admin_id in ADMIN_IDS:
         try:
             admin_msg = (
-                f"🚨 <b>ЗАЯВКА НА ВЫВОД #{wdr_id}</b>\n\n"
+                f"🔔 <b>[ОПОВЕЩЕНИЕ АДМИНИСТРАТОРА]</b>\n"
+                f"🚨 <b>Заявка на вывод #{wdr_id}</b>\n\n"
                 f"👤 Юзер: @{message.from_user.username or 'NoUser'} (ID: <code>{user_id}</code>)\n"
                 f"💰 Сумма: <b>{amount:.2f} USDT</b>\n"
                 f"📍 Кошелек TRC-20: <code>{address}</code>"
