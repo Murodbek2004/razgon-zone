@@ -29,8 +29,7 @@ def get_main_reply_keyboard(lang: str = "ru", is_trading: bool = False) -> Reply
         KeyboardButton(text=tr("btn_withdraw", lang))
     ])
     kb.append([
-        KeyboardButton(text=tr("btn_change_lang", lang)),
-        KeyboardButton(text=tr("btn_about", lang))
+        KeyboardButton(text=tr("btn_change_lang", lang))
     ])
 
     return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
