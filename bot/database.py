@@ -80,12 +80,27 @@ async def init_db():
             );
         """)
 
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS broker_accounts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                broker_server TEXT,
+                account_number TEXT,
+                account_password TEXT,
+                status TEXT DEFAULT 'pending',
+                reject_reason TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
         # Performance and Anti-Duplication Indexes
         await db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_deposits_tx_hash ON deposits(tx_hash);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_deposits_user ON deposits(user_id);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_status ON trading_sessions(user_id, status);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_user_wallets_addr ON user_deposit_wallets(tron_address);")
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_broker_user ON broker_accounts(user_id);")
 
         # Database migrations for new features
         try:
@@ -661,6 +676,73 @@ async def clean_test_wallets() -> int:
         """)
         await db.commit()
         return deleted_count
+
+# --- Broker Account Functions ---
+async def save_broker_account(user_id: int, broker_server: str, account_number: str, account_password: str) -> int:
+    """Saves new broker credentials for user, setting status to pending"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            """INSERT INTO broker_accounts (user_id, broker_server, account_number, account_password, status)
+               VALUES (?, ?, ?, ?, 'pending')""",
+            (user_id, broker_server.strip(), account_number.strip(), account_password.strip())
+        )
+        acc_id = cursor.lastrowid
+        await db.commit()
+        return acc_id
+
+async def get_user_broker_account(user_id: int) -> Optional[Dict[str, Any]]:
+    """Gets the most recent broker account for a user"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM broker_accounts WHERE user_id = ? ORDER BY id DESC LIMIT 1",
+            (user_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            return dict(row) if row else None
+
+async def get_broker_account_by_id(account_id: int) -> Optional[Dict[str, Any]]:
+    """Gets a broker account by ID"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM broker_accounts WHERE id = ?",
+            (account_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            return dict(row) if row else None
+
+async def update_broker_status(account_id: int, status: str, reject_reason: str = "") -> Optional[Dict[str, Any]]:
+    """Updates broker account status and returns updated record with user info"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        await db.execute(
+            "UPDATE broker_accounts SET status = ?, reject_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (status, reject_reason, account_id)
+        )
+        await db.commit()
+        async with db.execute("""
+            SELECT b.*, u.username, u.first_name, COALESCE(u.language, 'ru') as language
+            FROM broker_accounts b
+            LEFT JOIN users u ON b.user_id = u.user_id
+            WHERE b.id = ?
+        """, (account_id,)) as cursor:
+            row = await cursor.fetchone()
+            return dict(row) if row else None
+
+async def get_all_broker_accounts(limit: int = 50) -> List[Dict[str, Any]]:
+    """Gets all broker accounts for admin panel"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("""
+            SELECT b.*, u.username, u.first_name
+            FROM broker_accounts b
+            LEFT JOIN users u ON b.user_id = u.user_id
+            ORDER BY b.id DESC LIMIT ?
+        """, (limit,)) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+
 
 
 

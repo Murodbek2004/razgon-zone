@@ -29,6 +29,7 @@ def get_main_reply_keyboard(lang: str = "ru", is_trading: bool = False) -> Reply
         KeyboardButton(text=tr("btn_withdraw", lang))
     ])
     kb.append([
+        KeyboardButton(text=tr("btn_bind_broker", lang)),
         KeyboardButton(text=tr("btn_change_lang", lang))
     ])
 
@@ -52,6 +53,37 @@ def get_deposit_keyboard(lang: str = "ru") -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text=tr("btn_support", lang), url="https://t.me/RazgonZoneSupport")]
     ])
 
+def get_broker_menu_keyboard(lang: str = "ru", has_account: bool = False, is_active: bool = False) -> InlineKeyboardMarkup:
+    """Broker account management inline keyboard"""
+    if has_account:
+        btn_text = "🔄 Подключить другой счет" if lang == "ru" else "🔄 Boshqa hisobni ulash"
+        return InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=btn_text, callback_data="broker_enter_data")]
+        ])
+    else:
+        btn_connect = "⚡ Подключить счет" if lang == "ru" else "⚡ Hisobni ulash"
+        btn_cancel = "❌ Отмена" if lang == "ru" else "❌ Bekor qilish"
+        return InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=btn_connect, callback_data="broker_enter_data")],
+            [InlineKeyboardButton(text=btn_cancel, callback_data="broker_cancel")]
+        ])
+
+def get_broker_cancel_keyboard(lang: str = "ru") -> InlineKeyboardMarkup:
+    """Cancel broker binding input"""
+    btn_cancel = "❌ Отмена" if lang == "ru" else "❌ Bekor qilish"
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=btn_cancel, callback_data="broker_cancel")]
+    ])
+
+def get_admin_broker_keyboard(account_id: int) -> InlineKeyboardMarkup:
+    """Admin review of broker account credentials"""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="✅ Одобрить подключение", callback_data=f"adm_brk_ok:{account_id}"),
+            InlineKeyboardButton(text="❌ Отклонить", callback_data=f"adm_brk_no:{account_id}")
+        ]
+    ])
+
 def get_admin_dashboard_keyboard() -> InlineKeyboardMarkup:
     """Admin interactive dashboard with session completion"""
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -70,6 +102,9 @@ def get_admin_dashboard_keyboard() -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton(text="📢 Рассылка всем", callback_data="adm_broadcast"),
             InlineKeyboardButton(text="✉️ Написать клиенту", callback_data="adm_direct_msg")
+        ],
+        [
+            InlineKeyboardButton(text="💼 Счета брокеров (MT4/5)", callback_data="adm_view_brokers")
         ]
     ])
 

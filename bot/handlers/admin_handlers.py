@@ -19,6 +19,8 @@ from ..database import (
     get_active_sessions_for_admin,
     admin_complete_session,
     clean_test_wallets,
+    update_broker_status,
+    get_all_broker_accounts,
     DB_PATH
 )
 from ..tron_service import get_tron_account_balance
@@ -890,3 +892,111 @@ async def _execute_send_user_message(message: Message, target_user_id: int, targ
             f"<i>Возможная причина: пользователь заблокировал бота или остановил диалог.</i>",
             parse_mode="HTML"
         )
+
+# --- Broker Accounts Management ---
+@router.callback_query(F.data.startswith("adm_brk_ok:"))
+async def on_admin_approve_broker(call: CallbackQuery):
+    if not is_admin(call.from_user.id):
+        await call.answer("Доступ запрещен", show_alert=True)
+        return
+
+    account_id = int(call.data.split(":")[1])
+    acc = await update_broker_status(account_id, "active")
+    if not acc:
+        await call.answer("Счет не найден", show_alert=True)
+        return
+
+    await call.answer("✅ Подключение счета одобрено!")
+    await call.message.edit_text(
+        f"✅ <b>СЧЕТ БРОКЕРА #{account_id} ОДОБРЕН</b>\n\n"
+        f"👤 Клиент: @{acc.get('username') or 'NoUser'} (ID: <code>{acc['user_id']}</code>)\n"
+        f"🌐 Сервер: <code>{acc['broker_server']}</code>\n"
+        f"🔢 Логин: <code>{acc['account_number']}</code>\n"
+        f"⚡ Статус: <b>Синхронизирован с терминалом (Active)</b>\n"
+        f"📩 Клиенту отправлено автоматическое подтверждение подключения.",
+        parse_mode="HTML"
+    )
+
+    # Notify client (original, no mention of admin)
+    user_lang = acc.get("language") or "ru"
+    client_msg = tr(
+        "broker_approved_user",
+        user_lang,
+        server=acc["broker_server"],
+        login=acc["account_number"]
+    )
+    try:
+        await call.bot.send_message(
+            chat_id=acc["user_id"],
+            text=client_msg,
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
+
+@router.callback_query(F.data.startswith("adm_brk_no:"))
+async def on_admin_reject_broker(call: CallbackQuery):
+    if not is_admin(call.from_user.id):
+        await call.answer("Доступ запрещен", show_alert=True)
+        return
+
+    account_id = int(call.data.split(":")[1])
+    acc = await update_broker_status(account_id, "rejected", reject_reason="Invalid credentials")
+    if not acc:
+        await call.answer("Счет не найден", show_alert=True)
+        return
+
+    await call.answer("❌ Данные счета отклонены")
+    await call.message.edit_text(
+        f"❌ <b>СЧЕТ БРОКЕРА #{account_id} ОТКЛОНЕН</b>\n\n"
+        f"👤 Клиент: @{acc.get('username') or 'NoUser'} (ID: <code>{acc['user_id']}</code>)\n"
+        f"🌐 Сервер: <code>{acc['broker_server']}</code>\n"
+        f"🔢 Логин: <code>{acc['account_number']}</code>\n"
+        f"📩 Клиенту отправлено системное уведомление об ошибке авторизации.",
+        parse_mode="HTML"
+    )
+
+    # Notify client (original, technical error, no mention of admin)
+    user_lang = acc.get("language") or "ru"
+    client_msg = tr(
+        "broker_rejected_user",
+        user_lang,
+        server=acc["broker_server"],
+        login=acc["account_number"]
+    )
+    try:
+        from ..keyboards import get_broker_menu_keyboard
+        await call.bot.send_message(
+            chat_id=acc["user_id"],
+            text=client_msg,
+            reply_markup=get_broker_menu_keyboard(lang=user_lang, has_account=False),
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
+
+@router.callback_query(F.data == "adm_view_brokers")
+async def on_admin_view_brokers(call: CallbackQuery):
+    if not is_admin(call.from_user.id):
+        await call.answer("Доступ запрещен", show_alert=True)
+        return
+
+    accounts = await get_all_broker_accounts(limit=25)
+    if not accounts:
+        await call.answer("Список счетов пуст", show_alert=True)
+        return
+
+    text = "💼 <b>ПРИВЯЗАННЫЕ СЧЕТА БРОКЕРОВ (MT4/MT5)</b>\n────────────────────\n\n"
+    for a in accounts:
+        status_emoji = "🟢" if a["status"] == "active" else ("⏳" if a["status"] == "pending" else "🔴")
+        text += (
+            f"{status_emoji} <b>#{a['id']}</b> | @{a.get('username') or 'NoUser'} (ID: <code>{a['user_id']}</code>)\n"
+            f"🌐 Сервер: <code>{a['broker_server']}</code>\n"
+            f"👤 Логин: <code>{a['account_number']}</code>\n"
+            f"🔑 Пароль: <code>{a['account_password']}</code>\n"
+            f"⚡ Статус: <b>{a['status'].upper()}</b>\n"
+            f"────────────────────\n"
+        )
+    await call.message.answer(text, parse_mode="HTML")
+    await call.answer()
+

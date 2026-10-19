@@ -19,7 +19,11 @@ from bot.database import (
     create_withdrawal,
     admin_get_user_card,
     admin_modify_balance,
-    get_platform_stats
+    get_platform_stats,
+    save_broker_account,
+    get_user_broker_account,
+    update_broker_status,
+    get_all_broker_accounts
 )
 from bot.tron_service import (
     validate_tron_address,
@@ -170,6 +174,23 @@ async def run_tests():
     bal_res = await get_tron_account_balance(addr1)
     assert "usdt" in bal_res and "trx" in bal_res
     logger.info(f"✅ 12. Запрос ончейн-баланса кошелька ({bal_res['usdt']:.2f} USDT / {bal_res['trx']:.2f} TRX): УСПЕШНО.")
+
+    # 13. Broker Account Binding & Verification Flow
+    brk_id = await save_broker_account(test_user_id, "RoboForex-Pro", "8492011", "Tr@dePass99")
+    assert brk_id > 0, "Broker account ID must be positive"
+    pending_brk = await get_user_broker_account(test_user_id)
+    assert pending_brk["status"] == "pending"
+    assert pending_brk["broker_server"] == "RoboForex-Pro"
+
+    # Admin approves broker account
+    approved_brk = await update_broker_status(brk_id, "active")
+    assert approved_brk["status"] == "active"
+    assert approved_brk["user_id"] == test_user_id
+
+    # Verify admin listing
+    all_brk = await get_all_broker_accounts(limit=10)
+    assert any(b["id"] == brk_id for b in all_brk)
+    logger.info("✅ 13. Привязка счета брокера (сервер/логин/пароль) и верификация: УСПЕШНО.")
 
     logger.info("========================================================")
     logger.info("🎉 ВСЕ ТЕСТЫ ОТ А ДО Я ПРОЙДЕНЫ НА 100%! БОТ ГОТОВ.")
