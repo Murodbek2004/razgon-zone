@@ -502,6 +502,14 @@ async def get_all_user_ids() -> List[int]:
             rows = await cursor.fetchall()
             return [r[0] for r in rows]
 
+async def get_all_users_with_lang() -> List[Dict[str, Any]]:
+    """Returns all registered users with their language"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT user_id, COALESCE(language, 'ru') as language FROM users") as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+
 async def get_recent_deposits(limit: int = 10) -> List[Dict[str, Any]]:
     """Returns recent deposits with user info"""
     async with aiosqlite.connect(DB_PATH) as db:

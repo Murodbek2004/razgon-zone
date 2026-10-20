@@ -180,6 +180,18 @@ async def handle_start_trade(message: Message):
         except Exception:
             pass
 
+@router.callback_query(F.data == "quick_start_trade")
+async def on_quick_start_trade(call: CallbackQuery):
+    await call.answer()
+    call.message.from_user = call.from_user
+    await handle_start_trade(call.message)
+
+@router.callback_query(F.data == "quick_deposit")
+async def on_quick_deposit(call: CallbackQuery):
+    await call.answer()
+    call.message.from_user = call.from_user
+    await deposit_menu(call.message)
+
 # --- Live Status Button ---
 @router.message(F.text.in_(["📊 Статус разгона", "📊 Razgon holati", "📊 Статус торговли (Live)"]))
 async def handle_trade_status(message: Message):

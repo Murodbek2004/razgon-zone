@@ -14,6 +14,7 @@ from ..database import (
     admin_modify_balance,
     admin_set_balance,
     get_all_user_ids,
+    get_all_users_with_lang,
     get_recent_deposits,
     get_pending_withdrawals_list,
     get_active_sessions_for_admin,
@@ -28,7 +29,10 @@ from ..localization import tr
 from ..keyboards import (
     get_admin_dashboard_keyboard,
     get_admin_withdraw_keyboard,
-    get_main_reply_keyboard
+    get_main_reply_keyboard,
+    get_admin_table_broadcast_keyboard,
+    get_admin_table_preview_keyboard,
+    get_broadcast_action_keyboard
 )
 
 router = Router()
@@ -41,6 +45,7 @@ class AdminStates(StatesGroup):
     waiting_for_session_profit = State()
     waiting_for_direct_msg_recipient = State()
     waiting_for_direct_msg_text = State()
+    waiting_for_custom_table = State()
 
 def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS
@@ -627,18 +632,295 @@ async def on_view_recent_deposits(call: CallbackQuery):
     await call.message.answer(text, parse_mode="HTML")
     await call.answer()
 
+def generate_sample_trades() -> List[Dict[str, Any]]:
+    import random
+    pairs_data = [
+        ("BTC/USDT", 67450.0, 150.0, 14.2),
+        ("ETH/USDT", 3120.0, 15.0, 16.5),
+        ("SOL/USDT", 174.5, 2.0, 24.8),
+        ("TON/USDT", 5.25, 0.08, 12.4),
+        ("SUI/USDT", 2.85, 0.05, 16.5),
+    ]
+    deals = []
+    for pair, base, step, base_pnl in pairs_data:
+        entry = round(base + random.uniform(-step, step), 1)
+        exit_p = round(entry * (1.0 + random.uniform(0.015, 0.038)), 1)
+        pnl = round(base_pnl + random.uniform(-1.2, 2.2), 1)
+        deals.append({
+            "pair": pair,
+            "entry": entry,
+            "exit": exit_p,
+            "pnl": pnl
+        })
+    return deals
+
+def parse_manual_deals(text: str) -> List[Dict[str, Any]]:
+    deals = []
+    lines = [l.strip() for l in text.strip().split("\n") if l.strip()]
+    for line in lines:
+        cleaned = line.replace(",", " ").replace(";", " ").replace("|", " ")
+        parts = cleaned.split()
+        if len(parts) >= 4:
+            pair = parts[0].upper()
+            entry = parts[1]
+            exit_p = parts[2]
+            pnl = parts[3]
+            deals.append({"pair": pair, "entry": entry, "exit": exit_p, "pnl": pnl})
+        elif len(parts) == 3:
+            pair = parts[0].upper()
+            entry = parts[1]
+            exit_p = "-"
+            pnl = parts[2]
+            deals.append({"pair": pair, "entry": entry, "exit": exit_p, "pnl": pnl})
+    return deals
+
+def format_trades_broadcast_message(deals: List[Dict[str, Any]], lang: str = "ru", custom_note: str = "") -> str:
+    col_p, col_en, col_ex, col_pnl = 10, 10, 10, 8
+    header_pair = "ПАРА" if lang == "ru" else "JUFTLIK"
+    header_entry = "ВХОД" if lang == "ru" else "KIRISH"
+    header_exit = "ВЫХОД" if lang == "ru" else "CHIQISH"
+    header_pnl = "PNL"
+
+    lines = []
+    lines.append(f"{header_pair:<{col_p}}{header_entry:<{col_en}}{header_exit:<{col_ex}}{header_pnl:<{col_pnl}}")
+    lines.append("─" * 38)
+    
+    total_pnl = 0.0
+    for d in deals:
+        p = str(d.get("pair", ""))[:9]
+        en = d.get("entry")
+        ex = d.get("exit")
+        pnl = d.get("pnl")
+
+        try:
+            en_str = f"${float(en):,.1f}" if isinstance(en, (int, float)) or (str(en).replace('.', '', 1).isdigit()) else str(en)
+        except Exception:
+            en_str = str(en)
+
+        try:
+            ex_str = f"${float(ex):,.1f}" if isinstance(ex, (int, float)) or (str(ex).replace('.', '', 1).isdigit()) else str(ex)
+        except Exception:
+            ex_str = str(ex)
+        
+        if isinstance(pnl, (int, float)):
+            pnl_val = float(pnl)
+            pnl_str = f"+{pnl_val:.1f}%"
+            total_pnl += pnl_val
+        else:
+            pnl_str = str(pnl)
+            if not pnl_str.startswith("+") and not pnl_str.startswith("-"):
+                pnl_str = f"+{pnl_str}"
+            if not pnl_str.endswith("%"):
+                pnl_str = f"{pnl_str}%"
+            try:
+                total_pnl += float(pnl_str.replace('%', '').replace('+', ''))
+            except Exception:
+                pass
+
+        lines.append(f"{p:<{col_p}}{en_str:<{col_en}}{ex_str:<{col_ex}}{pnl_str:<{col_pnl}}")
+
+    lines.append("─" * 38)
+    total_label = "ИТОГО PnL:" if lang == "ru" else "JAMI FOYDA:"
+    lines.append(f"{total_label:<30}+{total_pnl:.1f}%")
+    table_text = "\n".join(lines)
+
+    if lang == "uz":
+        title = "🚀 <b>BITIMLAR NATIJALARI | LIVE RAZGON ZONE</b>\n───────────────────────────────────"
+        footer = (
+            "───────────────────────────────────\n"
+            "🛡 <b>Barcha pozitsiyalar plyusda yopildi!</b>\n"
+            "⚡ Keyingi savdo oqimi hoziroq boshlanmoqda.\n"
+            "💰 Balansni to'ldiring va 1 ta bosishda razgonga qo'shiling!"
+        )
+    else:
+        title = "🚀 <b>ОТЧЕТ О СДЕЛКАХ | LIVE РАЗГОН ZONE</b>\n───────────────────────────────────"
+        footer = (
+            "───────────────────────────────────\n"
+            "🛡 <b>Все позиции зафиксированы в плюс!</b>\n"
+            "⚡ Следующий поток разгона стартует прямо сейчас.\n"
+            "💰 Пополняйте баланс и подключайтесь к разгону в 1 клик!"
+        )
+
+    note_block = f"\n💡 <i>{custom_note}</i>\n" if custom_note else ""
+    return f"{title}\n<pre>\n{table_text}\n</pre>\n{footer}{note_block}"
+
 @router.callback_query(F.data == "adm_broadcast")
 async def on_broadcast_prompt(call: CallbackQuery, state: FSMContext):
     if not is_admin(call.from_user.id):
         return
+    await state.clear()
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📊 Рассылка таблицы сделок (Сигналы)", callback_data="adm_table_broadcast")],
+        [InlineKeyboardButton(text="📝 Обычный текст / Пост", callback_data="adm_text_broadcast")],
+        [InlineKeyboardButton(text="🔙 Отмена", callback_data="adm_cancel_broadcast")]
+    ])
+    text = (
+        "📢 <b>МАССОВАЯ РАССЫЛКА ПОЛЬЗОВАТЕЛЯМ</b>\n\n"
+        "Выберите тип сообщения для рассылки:\n"
+        "• <b>Таблица сделок:</b> красивая выровненная таблица (Пара, Вход, Выход, PnL) с кнопками запуска.\n"
+        "• <b>Обычный текст:</b> произвольное объявление или новость с HTML-разметкой."
+    )
+    await call.message.answer(text, reply_markup=kb, parse_mode="HTML")
+    await call.answer()
+
+@router.callback_query(F.data == "adm_text_broadcast")
+async def on_text_broadcast_prompt(call: CallbackQuery, state: FSMContext):
+    if not is_admin(call.from_user.id):
+        return
     await state.set_state(AdminStates.waiting_for_broadcast)
     text = (
-        "📢 <b>МАССОВАЯ РАССЫЛКА ВСЕМ ПОЛЬЗОВАТЕЛЯМ</b>\n\n"
+        "📝 <b>ОБЫЧНАЯ ТЕКСТОВАЯ РАССЫЛКА</b>\n\n"
         "Отправьте текст сообщения для рассылки (поддерживается HTML-разметка):\n"
         "<i>(Или отправьте 'отмена')</i>"
     )
     await call.message.answer(text, parse_mode="HTML")
     await call.answer()
+
+@router.callback_query(F.data == "adm_cancel_broadcast")
+async def on_cancel_broadcast(call: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await call.answer("Рассылка отменена")
+    try:
+        await call.message.edit_text("❌ Рассылка отменена.")
+    except Exception:
+        await call.message.answer("❌ Рассылка отменена.")
+
+@router.callback_query(F.data == "adm_table_broadcast")
+@router.message(Command("table"))
+@router.message(Command("signal"))
+async def start_table_broadcast_flow(event: Message | CallbackQuery, state: FSMContext):
+    user_id = event.from_user.id
+    if not is_admin(user_id):
+        return
+    await state.clear()
+    text = (
+        "📊 <b>РАССЫЛКА ТАБЛИЦЫ СДЕЛОК (СИГНАЛЫ / PnL)</b>\n────────────────────\n\n"
+        "Выберите способ формирования таблицы:\n\n"
+        "1️⃣ <b>«⚡ Готовая таблица (+84% PnL)»</b>\n"
+        "Бот сам сформирует красивую прибыльную таблицу по топ-парам (BTC, ETH, SOL, TON, SUI) со входами, выходами и итоговым PnL.\n\n"
+        "2️⃣ <b>«✍️ Ввести свои сделки»</b>\n"
+        "Вы можете отправить свои пары, цены и проценты, а бот выровняет их в идеальную таблицу."
+    )
+    if isinstance(event, CallbackQuery):
+        await event.message.answer(text, reply_markup=get_admin_table_broadcast_keyboard(), parse_mode="HTML")
+        await event.answer()
+    else:
+        await event.answer(text, reply_markup=get_admin_table_broadcast_keyboard(), parse_mode="HTML")
+
+@router.callback_query(F.data == "adm_tbl_auto")
+async def on_table_auto(call: CallbackQuery, state: FSMContext):
+    if not is_admin(call.from_user.id):
+        return
+    deals = generate_sample_trades()
+    await state.update_data(deals=deals)
+    
+    users = await get_all_user_ids()
+    total_users = len(users)
+
+    preview_msg = format_trades_broadcast_message(deals, lang="ru")
+    intro = (
+        "👁 <b>ПРЕДПРОСМОТР ТАБЛИЦЫ СДЕЛОК ДЛЯ РАССЫЛКИ</b>\n"
+        "<i>(Узбекским пользователям язык заголовков и кнопок переведется автоматически)</i>\n"
+        "────────────────────\n\n"
+    )
+    await call.message.answer(
+        f"{intro}{preview_msg}",
+        reply_markup=get_admin_table_preview_keyboard(total_users),
+        parse_mode="HTML"
+    )
+    await call.answer()
+
+@router.callback_query(F.data == "adm_tbl_manual")
+async def on_table_manual(call: CallbackQuery, state: FSMContext):
+    if not is_admin(call.from_user.id):
+        return
+    await state.set_state(AdminStates.waiting_for_custom_table)
+    text = (
+        "✍️ <b>ВВЕДИТЕ ДАННЫЕ ДЛЯ ТАБЛИЦЫ СДЕЛОК</b>\n────────────────────\n\n"
+        "Отправьте список сделок (каждая сделка с новой строки).\n"
+        "Формат строки: <code>Пара Вход Выход PnL</code>\n\n"
+        "<b>Пример:</b>\n"
+        "<code>BTC/USDT 67450 68890 +14.2%\n"
+        "ETH/USDT 3120 3295 +18%\n"
+        "SOL/USDT 174 192 25%\n"
+        "TON/USDT 5.25 5.90 12.5%</code>\n\n"
+        "<i>(Или отправьте 'отмена' для возврата)</i>"
+    )
+    await call.message.answer(text, parse_mode="HTML")
+    await call.answer()
+
+@router.message(AdminStates.waiting_for_custom_table)
+async def process_custom_table(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    if (message.text or "").strip().lower() == "отмена":
+        await state.clear()
+        await message.answer("❌ Ввод отменен.")
+        return
+
+    deals = parse_manual_deals(message.text or "")
+    if not deals:
+        await message.answer(
+            "⚠️ Не удалось распознать сделки. Пожалуйста, отправьте сделки в формате:\n"
+            "<code>BTC/USDT 67450 68890 +14.2%</code>\n"
+            "Попробуйте еще раз или напишите 'отмена':",
+            parse_mode="HTML"
+        )
+        return
+
+    await state.update_data(deals=deals)
+    users = await get_all_user_ids()
+    total_users = len(users)
+
+    preview_msg = format_trades_broadcast_message(deals, lang="ru")
+    intro = (
+        "👁 <b>ПРЕДПРОСМОТР ВАШЕЙ ТАБЛИЦЫ ДЛЯ РАССЫЛКИ</b>\n"
+        "────────────────────\n\n"
+    )
+    await message.answer(
+        f"{intro}{preview_msg}",
+        reply_markup=get_admin_table_preview_keyboard(total_users),
+        parse_mode="HTML"
+    )
+
+@router.callback_query(F.data == "adm_tbl_send")
+async def on_table_send_broadcast(call: CallbackQuery, state: FSMContext):
+    if not is_admin(call.from_user.id):
+        return
+
+    data = await state.get_data()
+    deals = data.get("deals") or generate_sample_trades()
+    await state.clear()
+
+    users = await get_all_users_with_lang()
+    sent_cnt = 0
+    fail_cnt = 0
+
+    progress_msg = await call.message.answer(f"⏳ Рассылка таблицы {len(users)} пользователям...")
+    await call.answer("🚀 Рассылка запущена!")
+
+    for u in users:
+        uid = u["user_id"]
+        lang = u.get("language") or "ru"
+        msg_text = format_trades_broadcast_message(deals, lang=lang)
+        kb = get_broadcast_action_keyboard(lang=lang)
+        try:
+            await call.bot.send_message(
+                chat_id=uid,
+                text=msg_text,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+            sent_cnt += 1
+        except Exception:
+            fail_cnt += 1
+
+    await progress_msg.edit_text(
+        f"📢 <b>РАССЫЛКА ТАБЛИЦЫ УСПЕШНО ЗАВЕРШЕНА!</b>\n\n"
+        f"✅ Успешно доставлено: <b>{sent_cnt}</b> пользователям\n"
+        f"❌ Не доставлено: <b>{fail_cnt}</b>",
+        parse_mode="HTML"
+    )
 
 @router.message(AdminStates.waiting_for_broadcast)
 async def process_broadcast(message: Message, state: FSMContext):

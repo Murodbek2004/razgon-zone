@@ -192,6 +192,32 @@ async def run_tests():
     assert any(b["id"] == brk_id for b in all_brk)
     logger.info("✅ 13. Привязка счета брокера (сервер/логин/пароль) и верификация: УСПЕШНО.")
 
+    # 14. Trade Table Broadcast Generator & Parser
+    from bot.database import get_all_users_with_lang
+    from bot.handlers.admin_handlers import (
+        generate_sample_trades,
+        parse_manual_deals,
+        format_trades_broadcast_message
+    )
+
+    all_users = await get_all_users_with_lang()
+    assert len(all_users) > 0, "Users list must not be empty"
+
+    auto_deals = generate_sample_trades()
+    assert len(auto_deals) == 5, "Auto deals must have 5 top pairs"
+    ru_table = format_trades_broadcast_message(auto_deals, lang="ru")
+    uz_table = format_trades_broadcast_message(auto_deals, lang="uz")
+    assert "<pre>" in ru_table and "BTC/USDT" in ru_table
+    assert "<pre>" in uz_table and "JUFTLIK" in uz_table
+
+    manual_text = "BTC/USDT 67450 68890 +14.2%\nETH/USDT 3120 3295 +18%\nSOL/USDT 174 192 25%"
+    parsed = parse_manual_deals(manual_text)
+    assert len(parsed) == 3
+    assert parsed[0]["pair"] == "BTC/USDT"
+    formatted_manual = format_trades_broadcast_message(parsed, lang="ru")
+    assert "SOL/USDT" in formatted_manual
+    logger.info("✅ 14. Генерация и форматирование таблицы сделок (RU/UZ) для рассылки: УСПЕШНО.")
+
     logger.info("========================================================")
     logger.info("🎉 ВСЕ ТЕСТЫ ОТ А ДО Я ПРОЙДЕНЫ НА 100%! БОТ ГОТОВ.")
     logger.info("========================================================")

@@ -101,10 +101,51 @@ def get_admin_dashboard_keyboard() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton(text="📢 Рассылка всем", callback_data="adm_broadcast"),
-            InlineKeyboardButton(text="✉️ Написать клиенту", callback_data="adm_direct_msg")
+            InlineKeyboardButton(text="📊 Таблица сделок (Рассылка)", callback_data="adm_table_broadcast")
         ],
         [
-            InlineKeyboardButton(text="💼 Счета брокеров (MT4/5)", callback_data="adm_view_brokers")
+            InlineKeyboardButton(text="💼 Счета брокеров (MT4/5)", callback_data="adm_view_brokers"),
+            InlineKeyboardButton(text="✉️ Написать клиенту", callback_data="adm_direct_msg")
+        ]
+    ])
+
+def get_admin_table_broadcast_keyboard() -> InlineKeyboardMarkup:
+    """Options for table broadcast"""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="⚡ Готовая таблица (+84% PnL)", callback_data="adm_tbl_auto")
+        ],
+        [
+            InlineKeyboardButton(text="✍️ Ввести свои сделки", callback_data="adm_tbl_manual")
+        ],
+        [
+            InlineKeyboardButton(text="🔙 Отмена", callback_data="adm_cancel_broadcast")
+        ]
+    ])
+
+def get_admin_table_preview_keyboard(total_users: int) -> InlineKeyboardMarkup:
+    """Preview actions before broadcast"""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text=f"🚀 Разослать всем ({total_users} чел.)", callback_data="adm_tbl_send")
+        ],
+        [
+            InlineKeyboardButton(text="🔄 Обновить значения PnL", callback_data="adm_tbl_auto"),
+            InlineKeyboardButton(text="✍️ Ввести вручную", callback_data="adm_tbl_manual")
+        ],
+        [
+            InlineKeyboardButton(text="🔙 Отмена", callback_data="adm_cancel_broadcast")
+        ]
+    ])
+
+def get_broadcast_action_keyboard(lang: str = "ru") -> InlineKeyboardMarkup:
+    """Action buttons attached to broadcast message for users"""
+    btn_start = "🚀 Запустить разгон" if lang == "ru" else "🚀 Razgonni boshlash"
+    btn_dep = "📥 Пополнить USDT" if lang == "ru" else "📥 USDT to'ldirish"
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text=btn_start, callback_data="quick_start_trade"),
+            InlineKeyboardButton(text=btn_dep, callback_data="quick_deposit")
         ]
     ])
 
